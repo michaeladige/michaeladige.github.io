@@ -144,6 +144,81 @@
       margin-top: 0.25rem;
     }
 
+    .repos-section { margin-top: 3.5rem; }
+
+    .repo-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+
+    .repo-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .repo-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .repo-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .repo-updated {
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .repo-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .repo-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .repo-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .lang-dot {
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .repos-status {
+      font-size: 0.875rem;
+      color: var(--muted);
+      padding: 0.5rem 0;
+    }
+
     footer {
       text-align: center;
       padding: 2rem;
@@ -216,11 +291,97 @@
       </a>
 
     </div>
+
+    <section class="repos-section">
+      <p class="section-title">Latest activity</p>
+      <div id="repos" class="grid">
+        <p class="repos-status">Loading latest repositories…</p>
+      </div>
+    </section>
   </main>
 
   <footer>
     Built with HTML &amp; CSS · Hosted on GitHub Pages
   </footer>
+
+  <script>
+    (function () {
+      var container = document.getElementById('repos');
+      var LANG_COLORS = {
+        TypeScript: '#3178c6', JavaScript: '#f1e05a', HTML: '#e34c26',
+        CSS: '#563d7c', Python: '#3572A5', Go: '#00ADD8', Java: '#b07219',
+        Shell: '#89e051', Ruby: '#701516', 'C#': '#178600', Rust: '#dea584'
+      };
+
+      function timeAgo(dateStr) {
+        var diff = Date.now() - new Date(dateStr).getTime();
+        var mins = Math.round(diff / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return mins + ' minute' + (mins === 1 ? '' : 's') + ' ago';
+        var hrs = Math.round(mins / 60);
+        if (hrs < 24) return hrs + ' hour' + (hrs === 1 ? '' : 's') + ' ago';
+        var days = Math.round(hrs / 24);
+        if (days < 30) return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+        var months = Math.round(days / 30);
+        if (months < 12) return months + ' month' + (months === 1 ? '' : 's') + ' ago';
+        var years = Math.round(months / 12);
+        return years + ' year' + (years === 1 ? '' : 's') + ' ago';
+      }
+
+      function esc(s) {
+        var d = document.createElement('div');
+        d.textContent = s == null ? '' : s;
+        return d.innerHTML;
+      }
+
+      function render(repos) {
+        if (!repos.length) {
+          container.innerHTML = '<p class="repos-status">No repositories to show.</p>';
+          return;
+        }
+        container.innerHTML = repos.map(function (r) {
+          var color = LANG_COLORS[r.language] || 'var(--accent)';
+          var lang = r.language
+            ? '<span><i class="lang-dot" style="background:' + color + '"></i>' + esc(r.language) + '</span>'
+            : '';
+          var stars = r.stargazers_count
+            ? '<span>★ ' + r.stargazers_count + '</span>'
+            : '';
+          var desc = r.description
+            ? '<p class="repo-desc">' + esc(r.description) + '</p>'
+            : '';
+          return '' +
+            '<a class="repo-card" href="' + esc(r.html_url) + '" target="_blank" rel="noopener">' +
+              '<div class="repo-head">' +
+                '<span class="repo-name">' + esc(r.name) + '</span>' +
+                '<span class="repo-updated">Updated ' + timeAgo(r.pushed_at) + '</span>' +
+              '</div>' +
+              desc +
+              '<div class="repo-meta">' + lang + stars + '</div>' +
+            '</a>';
+        }).join('');
+      }
+
+      fetch('https://api.github.com/users/michaeladige/repos?sort=pushed&per_page=100')
+        .then(function (res) {
+          if (!res.ok) throw new Error('GitHub API error ' + res.status);
+          return res.json();
+        })
+        .then(function (repos) {
+          var list = repos
+            .filter(function (r) { return !r.fork && !r.archived; })
+            .sort(function (a, b) { return new Date(b.pushed_at) - new Date(a.pushed_at); })
+            .slice(0, 6);
+          render(list);
+        })
+        .catch(function () {
+          container.innerHTML =
+            '<p class="repos-status">Couldn\'t load repositories right now. ' +
+            'View them on <a class="repo-name" href="https://github.com/michaeladige?tab=repositories" ' +
+            'target="_blank" rel="noopener">GitHub</a>.</p>';
+        });
+    })();
+  </script>
 
 </body>
 </html>
